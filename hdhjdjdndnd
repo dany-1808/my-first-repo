@@ -1,0 +1,80 @@
+from lse.client import LSE
+from datetime import datetime
+
+
+client = LSE("lse_live_de2a62bd8d03a6a6376d54cecf828830")
+
+
+data = client.candles(
+    "EUR/USD",
+    timeframe="1m",
+    limit=50
+)
+
+
+closes = [candle["close"] for candle in data]
+
+first = closes[0]
+last = closes[-1]
+
+
+# EMA 21
+period = 21
+ema = sum(closes[-period:]) / period
+
+
+diff = ((last - ema) / ema) * 100
+
+
+# проверка последних 3 свечей
+last_three = closes[-3:]
+
+above = all(price > ema for price in last_three)
+below = all(price < ema for price in last_three)
+
+
+print("EUR/USD анализ")
+print("----------------------------")
+print("Первая цена:", first)
+print("Последняя цена:", last)
+print("EMA21:", ema)
+print("Отклонение:", round(diff, 3), "%")
+print("----------------------------")
+
+
+if above and diff > 0.02:
+    trend = "📈 сильный вверх"
+    signal = "🟢 BUY"
+
+elif below and diff < -0.02:
+    trend = "📉 сильный вниз"
+    signal = "🔴 SELL"
+
+else:
+    trend = "➡️ нет подтверждения"
+    signal = "⚪ WAIT"
+
+
+print("Тренд:", trend)
+print("Сигнал:", signal)
+
+
+if signal != "⚪ WAIT":
+
+    with open("signals.txt", "a") as file:
+        file.write(f"""
+Время: {datetime.now()}
+Пара: EUR/USD
+Цена: {last}
+EMA21: {ema}
+Отклонение: {round(diff,3)}%
+Сигнал: {signal}
+Подтверждение: 3 свечи
+----------------------------
+""")
+
+    print("✅ Сигнал сохранён")
+
+else:
+    print("Сигнал не записан")
+
