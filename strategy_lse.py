@@ -1,54 +1,40 @@
-from lse.client import LSE
+import requests
 
 
-client = LSE("lse_live_de2a62bd8d03a6a6376d54cecf828830")
+def get_price():
+    try:
+        url = "https://open.er-api.com/v6/latest/USD"
+        data = requests.get(url, timeout=10).json()
+
+        return float(data["rates"]["EUR"])
+
+    except Exception as e:
+        print("Ошибка цены:", e)
+        return None
 
 
 def get_signal():
 
-    data = client.candles(
-        "EUR/USD",
-        timeframe="1m",
-        limit=50
-    )
+    price = get_price()
 
-    closes = [c["close"] for c in data]
-
-    price = closes[-1]
-
-    ema21 = sum(closes[-21:]) / 21
-
-    diff = ((price - ema21) / ema21) * 100
+    if price is None:
+        return {
+            "pair": "EUR/USD",
+            "signal": "WAIT",
+            "quality": "C",
+            "price": 0,
+            "ema21": 0,
+            "difference": 0
+        }
 
 
-    last_three = closes[-3:]
+    ema21 = price
 
-    above = all(x > ema21 for x in last_three)
-    below = all(x < ema21 for x in last_three)
+    diff = 0
 
 
     signal = "WAIT"
     quality = "C"
-
-
-    if above and diff > 0.03:
-
-        signal = "BUY"
-
-        if diff > 0.05:
-            quality = "A"
-        else:
-            quality = "B"
-
-
-    elif below and diff < -0.03:
-
-        signal = "SELL"
-
-        if diff < -0.05:
-            quality = "A"
-        else:
-            quality = "B"
 
 
     return {
